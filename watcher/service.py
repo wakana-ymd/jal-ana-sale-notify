@@ -68,6 +68,7 @@ class WatchService:
         checked_at = now_jst_iso()
         state = self.state_store.load(target.document_id, target.airline, target.url)
         previous_error_notified = state.is_error_notified
+        notification_error: str | None = None
 
         try:
             html = self.fetcher.fetch(target.url)
@@ -80,9 +81,20 @@ class WatchService:
             error_notified = False
             if state.consecutive_error_count >= 3 and not state.is_error_notified:
                 if not dry_run:
-                    self.notifier.send_error_notification(target, str(exc))
-                state.is_error_notified = True
-                error_notified = True
+                    try:
+                        self.notifier.send_error_notification(target, str(exc))
+                        state.is_error_notified = True
+                        error_notified = True
+                    except Exception as notify_exc:
+                        notification_error = str(notify_exc)
+                        logger.exception(
+                            "Error notification failed for %s: %s",
+                            target.airline,
+                            notify_exc,
+                        )
+                else:
+                    state.is_error_notified = True
+                    error_notified = True
             self.state_store.save(target.document_id, state)
             return CheckOutcome(
                 airline=target.airline,
@@ -92,6 +104,7 @@ class WatchService:
                 notified=False,
                 error=str(exc),
                 error_notified=error_notified,
+                notification_error=notification_error,
             )
 
         changed = current_hash != state.last_hash
@@ -99,8 +112,16 @@ class WatchService:
         recovered = False
 
         if previous_error_notified and not dry_run:
-            self.notifier.send_recovery_notification(target)
-            recovered = True
+            try:
+                self.notifier.send_recovery_notification(target)
+                recovered = True
+            except Exception as notify_exc:
+                notification_error = str(notify_exc)
+                logger.exception(
+                    "Recovery notification failed for %s: %s",
+                    target.airline,
+                    notify_exc,
+                )
         elif previous_error_notified:
             recovered = True
 
@@ -110,10 +131,23 @@ class WatchService:
             last_notified_hash=state.last_notified_hash,
         ):
             if not dry_run:
-                self.notifier.send_sale_notification(target, important_text, checked_at)
-            state.last_notified_hash = current_hash
+                try:
+                    self.notifier.send_sale_notification(
+                        target, important_text, checked_at
+                    )
+                    state.last_notified_hash = current_hash
+                    notified = True
+                except Exception as notify_exc:
+                    notification_error = str(notify_exc)
+                    logger.exception(
+                        "Sale notification failed for %s: %s",
+                        target.airline,
+                        notify_exc,
+                    )
+            else:
+                state.last_notified_hash = current_hash
+                notified = True
             state.last_changed_at = checked_at
-            notified = True
         elif changed:
             state.last_changed_at = checked_at
 
@@ -122,7 +156,7 @@ class WatchService:
         state.last_checked_at = checked_at
         state.consecutive_error_count = 0
         state.last_error = None
-        state.is_error_notified = False
+        state.is_error_notified = previous_error_notified and not recovered
         self.state_store.save(target.document_id, state)
 
         return CheckOutcome(
@@ -131,8 +165,10 @@ class WatchService:
             checked_at=checked_at,
             changed=changed,
             notified=notified,
+            error=notification_error,
             recovered=recovered,
             important_text=important_text,
+            notification_error=notification_error,
         )
 
 

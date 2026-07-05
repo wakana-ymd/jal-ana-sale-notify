@@ -65,6 +65,7 @@ class CheckOutcome:
     error_notified: bool = False
     recovered: bool = False
     important_text: str = ""
+    notification_error: str | None = None
 
 
 def now_jst_iso() -> str:
