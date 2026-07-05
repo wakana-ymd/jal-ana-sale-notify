@@ -83,13 +83,10 @@ def compute_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def is_notify_target(
-    important_text: str, current_hash: str, last_notified_hash: str
-) -> bool:
+def is_notify_target(important_text: str) -> bool:
     has_sale_keyword = any(keyword in important_text for keyword in SALE_KEYWORDS)
     has_period_keyword = any(keyword in important_text for keyword in PERIOD_KEYWORDS)
-    is_not_notified = current_hash != last_notified_hash
-    return has_sale_keyword and has_period_keyword and is_not_notified
+    return has_sale_keyword and has_period_keyword
 
 
 def extract_field(important_text: str, field_names: tuple[str, ...]) -> str | None:

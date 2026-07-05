@@ -131,11 +131,7 @@ class WatchService:
         elif previous_error_notified:
             recovered = True
 
-        if changed and is_notify_target(
-            important_text=important_text,
-            current_hash=current_hash,
-            last_notified_hash=state.last_notified_hash,
-        ):
+        if changed and is_notify_target(important_text=important_text):
             sale_period_evaluation = evaluate_sale_period(
                 important_text,
                 reference_datetime=now_jst_from_iso(checked_at),
@@ -149,7 +145,6 @@ class WatchService:
                         checked_at,
                         sale_period_status=sale_period_evaluation.status,
                     )
-                    state.last_notified_hash = current_hash
                     notified = True
                 except Exception as notify_exc:
                     notification_error = str(notify_exc)
@@ -159,7 +154,6 @@ class WatchService:
                         notify_exc,
                     )
             else:
-                state.last_notified_hash = current_hash
                 notified = True
             state.last_changed_at = checked_at
         elif changed:

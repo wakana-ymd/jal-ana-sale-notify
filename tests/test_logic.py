@@ -9,7 +9,6 @@ from watcher.parser import (
     SALE_PERIOD_IN_WINDOW,
     SALE_PERIOD_OUT_OF_WINDOW,
     SALE_PERIOD_UNKNOWN,
-    compute_hash,
     evaluate_sale_period,
     extract_important_lines,
     extract_text,
@@ -70,10 +69,8 @@ class ParserLogicTests(unittest.TestCase):
 
     def test_is_notify_target_matches_spec(self):
         text = "タイムセール\n販売期間 7/1-7/10\n搭乗期間 8/1-8/31"
-        current_hash = compute_hash(text)
-        self.assertTrue(is_notify_target(text, current_hash, "previous"))
-        self.assertFalse(is_notify_target("お知らせのみ", current_hash, "previous"))
-        self.assertFalse(is_notify_target(text, current_hash, current_hash))
+        self.assertTrue(is_notify_target(text))
+        self.assertFalse(is_notify_target("お知らせのみ"))
 
     def test_parse_period_line_uses_reference_year_when_omitted(self):
         parsed = parse_period_line("販売期間 7/1-7/10", reference_date=datetime(2026, 6, 20).date())
