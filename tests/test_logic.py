@@ -129,9 +129,10 @@ class ParserLogicTests(unittest.TestCase):
             "2026-07-05T09:00:00+09:00",
             sale_period_status=SALE_PERIOD_IN_WINDOW,
         )
-        self.assertIn("状態: 販売期間内のセール情報を検知しました", body)
-        self.assertIn("本文抜粋:", body)
-        self.assertIn("運賃 7,700円から", body)
+        self.assertEqual(
+            body,
+            "販売期間 2026/7/1-2026/7/10\n搭乗期間 2026/8/1-2026/8/31",
+        )
 
     def test_build_sale_notification_text_uses_simple_body_out_of_window(self):
         important_text = "タイムセール\n販売期間 2026/7/1-2026/7/10\n搭乗期間 2026/8/1-2026/8/31"
@@ -141,8 +142,7 @@ class ParserLogicTests(unittest.TestCase):
             "2026-07-12T09:00:00+09:00",
             sale_period_status=SALE_PERIOD_OUT_OF_WINDOW,
         )
-        self.assertIn("状態: タイムセール期間外", body)
-        self.assertNotIn("本文抜粋:", body)
+        self.assertEqual(body, "JAL：セール期間外")
 
 
 if __name__ == "__main__":

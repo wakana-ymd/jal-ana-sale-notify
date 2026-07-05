@@ -90,45 +90,20 @@ def build_sale_notification_text(
 ) -> str:
     sales_period = extract_field(important_text, ("販売期間", "予約・購入期間"))
     boarding_period = extract_field(important_text, ("搭乗期間", "対象搭乗期間"))
-    excerpt_lines = _build_excerpt_lines(important_text, sales_period, boarding_period)
 
     if sale_period_status == SALE_PERIOD_IN_WINDOW:
-        lines = [
-            f"【{target.airline} 国内線セール検知】",
-            "",
-            "状態: 販売期間内のセール情報を検知しました",
-            f"検知時刻: {format_jst(detected_at_iso)}",
-        ]
+        lines = []
         if sales_period:
             lines.append(sales_period)
         if boarding_period:
             lines.append(boarding_period)
-        if excerpt_lines:
-            lines.extend(["", "本文抜粋:"])
-            lines.extend(excerpt_lines)
     else:
-        status_text = (
-            "状態: タイムセール期間外"
+        return (
+            f"{target.airline}：セール期間外"
             if sale_period_status == SALE_PERIOD_OUT_OF_WINDOW
-            else "状態: 販売期間を判定できませんでした"
+            else f"{target.airline}：販売期間判定不可"
         )
-        lines = [
-            f"【{target.airline} 国内線セール検知】",
-            "",
-            status_text,
-            f"検知時刻: {format_jst(detected_at_iso)}",
-        ]
-        if sales_period:
-            lines.append(sales_period)
-
-    lines.extend(
-        [
-            f"URL: {target.url}",
-            "",
-            "※公式ページで最終確認してください",
-        ]
-    )
-    return "\n".join(lines)
+    return "\n".join(lines[:2])
 
 
 def format_jst(iso_timestamp: str) -> str:
@@ -142,12 +117,3 @@ def _extract_error_detail(response: requests.Response) -> str:
     except ValueError:
         return response.text.strip() or "<empty>"
     return str(payload)
-
-
-def _build_excerpt_lines(
-    important_text: str,
-    sales_period: str | None,
-    boarding_period: str | None,
-) -> list[str]:
-    excluded = {line for line in (sales_period, boarding_period) if line}
-    return [line for line in important_text.split("\n") if line and line not in excluded]
