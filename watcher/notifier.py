@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
 import requests
 
 from watcher.models import WatchTarget
@@ -11,9 +8,6 @@ from watcher.parser import (
     SALE_PERIOD_OUT_OF_WINDOW,
     extract_field,
 )
-
-
-JST = ZoneInfo("Asia/Tokyo")
 
 
 class LineNotifier:
@@ -90,25 +84,27 @@ def build_sale_notification_text(
 ) -> str:
     sales_period = extract_field(important_text, ("販売期間", "予約・購入期間"))
     boarding_period = extract_field(important_text, ("搭乗期間", "対象搭乗期間"))
+    excerpt_lines = _build_excerpt_lines(
+        important_text,
+        excluded_lines=(sales_period, boarding_period),
+        max_lines=4,
+    )
+    lines = [f"【{target.airline}】"]
 
     if sale_period_status == SALE_PERIOD_IN_WINDOW:
-        lines = []
         if sales_period:
             lines.append(sales_period)
         if boarding_period:
             lines.append(boarding_period)
+        lines.extend(excerpt_lines)
+        lines.append(f"URL: {target.url}")
     else:
-        return (
-            f"{target.airline}：セール期間外"
+        lines.append(
+            "セール期間外"
             if sale_period_status == SALE_PERIOD_OUT_OF_WINDOW
-            else f"{target.airline}：販売期間判定不可"
+            else "販売期間判定不可"
         )
-    return "\n".join(lines[:2])
-
-
-def format_jst(iso_timestamp: str) -> str:
-    dt = datetime.fromisoformat(iso_timestamp).astimezone(JST)
-    return dt.strftime("%Y-%m-%d %H:%M JST")
+    return "\n".join(lines)
 
 
 def _extract_error_detail(response: requests.Response) -> str:
@@ -117,3 +113,18 @@ def _extract_error_detail(response: requests.Response) -> str:
     except ValueError:
         return response.text.strip() or "<empty>"
     return str(payload)
+
+
+def _build_excerpt_lines(
+    important_text: str,
+    *,
+    excluded_lines: tuple[str | None, ...],
+    max_lines: int,
+) -> list[str]:
+    excluded = {line for line in excluded_lines if line}
+    lines = [
+        line
+        for line in important_text.split("\n")
+        if line and line not in excluded
+    ]
+    return lines[:max_lines]

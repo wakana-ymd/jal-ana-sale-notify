@@ -118,6 +118,9 @@ class ParserLogicTests(unittest.TestCase):
                 "販売期間 2026/7/1-2026/7/10",
                 "搭乗期間 2026/8/1-2026/8/31",
                 "運賃 7,700円から",
+                "対象運賃 プロモーション",
+                "座席数には限りがあります",
+                "セール運賃の詳細",
             ]
         )
         body = build_sale_notification_text(
@@ -128,7 +131,18 @@ class ParserLogicTests(unittest.TestCase):
         )
         self.assertEqual(
             body,
-            "販売期間 2026/7/1-2026/7/10\n搭乗期間 2026/8/1-2026/8/31",
+            "\n".join(
+                [
+                    "【JAL】",
+                    "販売期間 2026/7/1-2026/7/10",
+                    "搭乗期間 2026/8/1-2026/8/31",
+                    "タイムセール",
+                    "運賃 7,700円から",
+                    "対象運賃 プロモーション",
+                    "座席数には限りがあります",
+                    "URL: https://example.com/sale",
+                ]
+            ),
         )
 
     def test_build_sale_notification_text_uses_simple_body_out_of_window(self):
@@ -139,7 +153,7 @@ class ParserLogicTests(unittest.TestCase):
             "2026-07-12T09:00:00+09:00",
             sale_period_status=SALE_PERIOD_OUT_OF_WINDOW,
         )
-        self.assertEqual(body, "JAL：セール期間外")
+        self.assertEqual(body, "【JAL】\nセール期間外")
 
 
 if __name__ == "__main__":
