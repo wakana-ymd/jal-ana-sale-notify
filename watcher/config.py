@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 
 DEFAULT_JAL_URL = "https://www.jal.co.jp/jp/ja/dom/fare/timesale/"
-DEFAULT_ANA_URL = "https://www.ana.co.jp/ja/jp/book-plan/fare/domestic/sale/"
+DEFAULT_ANA_URL = "https://www.ana.co.jp/ja/jp/domestic/theme/timesale/sale/"
 DEFAULT_STATE_DB_PATH = "data/watch_states.sqlite3"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 10
-DEFAULT_USER_AGENT = "jal-ana-sale-notify/1.0 (+EC2 cron)"
+DEFAULT_USER_AGENT = "jal-ana-sale-notify/1.0-EC2-cron"
 
 
 @dataclass(frozen=True)
@@ -38,12 +38,17 @@ def _require_env(name: str) -> str:
 def load_settings() -> Settings:
     jal_url = os.getenv("JAL_SALE_URL", DEFAULT_JAL_URL).strip() or DEFAULT_JAL_URL
     ana_url = os.getenv("ANA_SALE_URL", DEFAULT_ANA_URL).strip() or DEFAULT_ANA_URL
+    state_db_path = os.path.expanduser(
+        os.path.expandvars(
+            os.getenv("STATE_DB_PATH", DEFAULT_STATE_DB_PATH).strip()
+            or DEFAULT_STATE_DB_PATH
+        )
+    )
 
     return Settings(
         line_channel_access_token=_require_env("LINE_CHANNEL_ACCESS_TOKEN"),
         line_user_id=_require_env("LINE_USER_ID"),
-        state_db_path=os.getenv("STATE_DB_PATH", DEFAULT_STATE_DB_PATH).strip()
-        or DEFAULT_STATE_DB_PATH,
+        state_db_path=state_db_path,
         request_timeout_seconds=int(
             os.getenv("REQUEST_TIMEOUT_SECONDS", DEFAULT_REQUEST_TIMEOUT_SECONDS)
         ),

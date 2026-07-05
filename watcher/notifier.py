@@ -78,9 +78,24 @@ class LineNotifier:
             },
             timeout=10,
         )
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as exc:
+            detail = _extract_error_detail(response)
+            raise requests.HTTPError(
+                f"{exc} response={detail}",
+                response=response,
+            ) from exc
 
 
 def format_jst(iso_timestamp: str) -> str:
     dt = datetime.fromisoformat(iso_timestamp).astimezone(JST)
     return dt.strftime("%Y-%m-%d %H:%M JST")
+
+
+def _extract_error_detail(response: requests.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text.strip() or "<empty>"
+    return str(payload)
