@@ -61,6 +61,7 @@ class CheckOutcome:
     checked_at: str
     changed: bool
     notified: bool
+    sale_period_status: str | None = None
     error: str | None = None
     error_notified: bool = False
     recovered: bool = False

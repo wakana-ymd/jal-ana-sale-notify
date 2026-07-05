@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from watcher.config import Settings
@@ -9,6 +10,7 @@ from watcher.models import CheckOutcome, WatchState, WatchTarget, now_jst_iso
 from watcher.notifier import LineNotifier
 from watcher.parser import (
     compute_hash,
+    evaluate_sale_period,
     extract_important_lines,
     extract_text,
     is_notify_target,
@@ -113,6 +115,7 @@ class WatchService:
         changed = current_hash != state.last_hash
         notified = False
         recovered = False
+        sale_period_status: str | None = None
 
         if previous_error_notified and not dry_run:
             try:
@@ -133,10 +136,18 @@ class WatchService:
             current_hash=current_hash,
             last_notified_hash=state.last_notified_hash,
         ):
+            sale_period_evaluation = evaluate_sale_period(
+                important_text,
+                reference_datetime=now_jst_from_iso(checked_at),
+            )
+            sale_period_status = sale_period_evaluation.status
             if not dry_run:
                 try:
                     self.notifier.send_sale_notification(
-                        target, important_text, checked_at
+                        target,
+                        important_text,
+                        checked_at,
+                        sale_period_status=sale_period_evaluation.status,
                     )
                     state.last_notified_hash = current_hash
                     notified = True
@@ -168,6 +179,7 @@ class WatchService:
             checked_at=checked_at,
             changed=changed,
             notified=notified,
+            sale_period_status=sale_period_status,
             error=notification_error,
             recovered=recovered,
             important_text=important_text,
@@ -188,3 +200,7 @@ def write_debug_snapshot(target: WatchTarget, html: str, important_text: str) ->
     slug = target.document_id
     (debug_dir / f"{slug}.html").write_text(html, encoding="utf-8")
     (debug_dir / f"{slug}.important.txt").write_text(important_text, encoding="utf-8")
+
+
+def now_jst_from_iso(iso_timestamp: str) -> datetime:
+    return datetime.fromisoformat(iso_timestamp)

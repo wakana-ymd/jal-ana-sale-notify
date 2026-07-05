@@ -6,7 +6,11 @@ from zoneinfo import ZoneInfo
 import requests
 
 from watcher.models import WatchTarget
-from watcher.parser import extract_field
+from watcher.parser import (
+    SALE_PERIOD_IN_WINDOW,
+    SALE_PERIOD_OUT_OF_WINDOW,
+    extract_field,
+)
 
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -18,31 +22,20 @@ class LineNotifier:
         self.user_id = user_id
 
     def send_sale_notification(
-        self, target: WatchTarget, important_text: str, detected_at_iso: str
+        self,
+        target: WatchTarget,
+        important_text: str,
+        detected_at_iso: str,
+        *,
+        sale_period_status: str,
     ) -> None:
-        lines = [
-            f"【{target.airline} 国内線セール検知】",
-            "",
-            "状態: セール情報が更新されました",
-            f"検知時刻: {format_jst(detected_at_iso)}",
-        ]
-
-        sales_period = extract_field(important_text, ("販売期間", "予約・購入期間"))
-        boarding_period = extract_field(important_text, ("搭乗期間", "対象搭乗期間"))
-
-        if sales_period:
-            lines.append(sales_period)
-        if boarding_period:
-            lines.append(boarding_period)
-
-        lines.extend(
-            [
-                f"URL: {target.url}",
-                "",
-                "※公式ページで最終確認してください",
-            ]
+        body = build_sale_notification_text(
+            target,
+            important_text,
+            detected_at_iso,
+            sale_period_status=sale_period_status,
         )
-        self._push("\n".join(lines))
+        self._push(body)
 
     def send_error_notification(self, target: WatchTarget, error_message: str) -> None:
         body = "\n".join(
@@ -88,6 +81,56 @@ class LineNotifier:
             ) from exc
 
 
+def build_sale_notification_text(
+    target: WatchTarget,
+    important_text: str,
+    detected_at_iso: str,
+    *,
+    sale_period_status: str,
+) -> str:
+    sales_period = extract_field(important_text, ("販売期間", "予約・購入期間"))
+    boarding_period = extract_field(important_text, ("搭乗期間", "対象搭乗期間"))
+    excerpt_lines = _build_excerpt_lines(important_text, sales_period, boarding_period)
+
+    if sale_period_status == SALE_PERIOD_IN_WINDOW:
+        lines = [
+            f"【{target.airline} 国内線セール検知】",
+            "",
+            "状態: 販売期間内のセール情報を検知しました",
+            f"検知時刻: {format_jst(detected_at_iso)}",
+        ]
+        if sales_period:
+            lines.append(sales_period)
+        if boarding_period:
+            lines.append(boarding_period)
+        if excerpt_lines:
+            lines.extend(["", "本文抜粋:"])
+            lines.extend(excerpt_lines)
+    else:
+        status_text = (
+            "状態: タイムセール期間外"
+            if sale_period_status == SALE_PERIOD_OUT_OF_WINDOW
+            else "状態: 販売期間を判定できませんでした"
+        )
+        lines = [
+            f"【{target.airline} 国内線セール検知】",
+            "",
+            status_text,
+            f"検知時刻: {format_jst(detected_at_iso)}",
+        ]
+        if sales_period:
+            lines.append(sales_period)
+
+    lines.extend(
+        [
+            f"URL: {target.url}",
+            "",
+            "※公式ページで最終確認してください",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def format_jst(iso_timestamp: str) -> str:
     dt = datetime.fromisoformat(iso_timestamp).astimezone(JST)
     return dt.strftime("%Y-%m-%d %H:%M JST")
@@ -99,3 +142,12 @@ def _extract_error_detail(response: requests.Response) -> str:
     except ValueError:
         return response.text.strip() or "<empty>"
     return str(payload)
+
+
+def _build_excerpt_lines(
+    important_text: str,
+    sales_period: str | None,
+    boarding_period: str | None,
+) -> list[str]:
+    excluded = {line for line in (sales_period, boarding_period) if line}
+    return [line for line in important_text.split("\n") if line and line not in excluded]
