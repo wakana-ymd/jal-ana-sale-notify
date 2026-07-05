@@ -1,5 +1,6 @@
 import unittest
 
+from watcher.fetcher import decode_html
 from watcher.parser import (
     compute_hash,
     extract_important_lines,
@@ -10,6 +11,14 @@ from watcher.parser import (
 
 
 class ParserLogicTests(unittest.TestCase):
+    def test_decode_html_prefers_meta_charset_over_wrong_header_guess(self):
+        html_bytes = (
+            '<html><head><meta charset="utf-8"></head>'
+            '<body>国内航空券タイムセール 販売期間 搭乗期間</body></html>'
+        ).encode("utf-8")
+        decoded = decode_html(html_bytes, "ISO-8859-1")
+        self.assertIn("国内航空券タイムセール", decoded)
+
     def test_extract_text_removes_noise_tags(self):
         html = """
         <html>

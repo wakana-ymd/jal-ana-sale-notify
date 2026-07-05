@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import requests
+from bs4 import UnicodeDammit
 
 
 class FetchError(RuntimeError):
@@ -31,5 +32,13 @@ class PageFetcher:
         if response.status_code != 200:
             raise FetchError(f"unexpected status code: {response.status_code}")
 
-        response.encoding = response.encoding or response.apparent_encoding
-        return response.text
+        return decode_html(response.content, response.apparent_encoding)
+
+
+def decode_html(content: bytes, apparent_encoding: str | None) -> str:
+    dammit = UnicodeDammit(content, is_html=True)
+    if dammit.unicode_markup is not None:
+        return dammit.unicode_markup
+
+    fallback_encoding = apparent_encoding or "utf-8"
+    return content.decode(fallback_encoding, errors="replace")
