@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from watcher.config import Settings
 from watcher.fetcher import FetchError, PageFetcher
@@ -73,6 +74,8 @@ class WatchService:
         try:
             html = self.fetcher.fetch(target.url)
             important_text, current_hash = build_important_payload(html)
+            if not important_text:
+                write_debug_snapshot(target, html, important_text)
         except FetchError as exc:
             logger.warning("Fetch failed for %s: %s", target.airline, exc)
             state.consecutive_error_count += 1
@@ -177,3 +180,11 @@ def build_important_payload(html: str) -> tuple[str, str]:
     normalized = normalize_text(text)
     important_text = extract_important_lines(normalized)
     return important_text, compute_hash(important_text)
+
+
+def write_debug_snapshot(target: WatchTarget, html: str, important_text: str) -> None:
+    debug_dir = Path("data/debug")
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    slug = target.document_id
+    (debug_dir / f"{slug}.html").write_text(html, encoding="utf-8")
+    (debug_dir / f"{slug}.important.txt").write_text(important_text, encoding="utf-8")

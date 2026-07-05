@@ -13,7 +13,16 @@ class PageFetcher:
         self.user_agent = user_agent
 
     def fetch(self, url: str) -> str:
-        headers = {"User-Agent": self.user_agent}
+        headers = {
+            "User-Agent": self.user_agent,
+            "Accept": (
+                "text/html,application/xhtml+xml,application/xml;q=0.9,"
+                "image/avif,image/webp,*/*;q=0.8"
+            ),
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        }
         try:
             response = requests.get(url, headers=headers, timeout=self.timeout_seconds)
         except requests.RequestException as exc:

@@ -4,11 +4,15 @@ import os
 from dataclasses import dataclass
 
 
-DEFAULT_JAL_URL = "https://www.jal.co.jp/jp/ja/dom/fare/timesale/"
+DEFAULT_JAL_URL = "https://www.jal.co.jp/jp/ja/dom/special/timesale/"
 DEFAULT_ANA_URL = "https://www.ana.co.jp/ja/jp/domestic/theme/timesale/sale/"
 DEFAULT_STATE_DB_PATH = "data/watch_states.sqlite3"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 10
-DEFAULT_USER_AGENT = "jal-ana-sale-notify/1.0-EC2-cron"
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/137.0.0.0 Safari/537.36"
+)
 
 
 @dataclass(frozen=True)
