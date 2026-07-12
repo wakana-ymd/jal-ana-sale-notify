@@ -62,10 +62,12 @@ def main(argv: list[str] | None = None) -> int:
         logging.info("Watcher finished: ok=%s dry_run=%s", result["ok"], args.dry_run)
         for item in result["results"]:
             logging.info(
-                "airline=%s changed=%s notified=%s recovered=%s error=%s",
+                "airline=%s changed=%s notified=%s sale_period_status=%s content_hash=%s recovered=%s error=%s",
                 item["airline"],
                 item["changed"],
                 item["notified"],
+                item["sale_period_status"],
+                item["content_hash"],
                 item["recovered"],
                 item["error"],
             )

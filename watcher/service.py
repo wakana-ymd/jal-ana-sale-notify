@@ -107,6 +107,7 @@ class WatchService:
                 checked_at=checked_at,
                 changed=False,
                 notified=False,
+                content_hash="",
                 error=str(exc),
                 error_notified=error_notified,
                 notification_error=notification_error,
@@ -115,7 +116,13 @@ class WatchService:
         changed = current_hash != state.last_hash
         notified = False
         recovered = False
+        notify_target = is_notify_target(important_text=important_text)
         sale_period_status: str | None = None
+        if notify_target:
+            sale_period_status = evaluate_sale_period(
+                important_text,
+                reference_datetime=now_jst_from_iso(checked_at),
+            ).status
 
         if previous_error_notified and not dry_run:
             try:
@@ -131,23 +138,21 @@ class WatchService:
         elif previous_error_notified:
             recovered = True
 
-        if changed and is_notify_target(important_text=important_text):
-            sale_period_evaluation = evaluate_sale_period(
-                important_text,
-                reference_datetime=now_jst_from_iso(checked_at),
-            )
-            sale_period_status = sale_period_evaluation.status
+        should_persist_payload = changed
+        if changed and notify_target:
             if not dry_run:
                 try:
                     self.notifier.send_sale_notification(
                         target,
                         important_text,
                         checked_at,
-                        sale_period_status=sale_period_evaluation.status,
+                        sale_period_status=sale_period_status or "unknown",
                     )
                     notified = True
+                    state.last_notified_hash = current_hash
                 except Exception as notify_exc:
                     notification_error = str(notify_exc)
+                    should_persist_payload = False
                     logger.exception(
                         "Sale notification failed for %s: %s",
                         target.airline,
@@ -155,12 +160,14 @@ class WatchService:
                     )
             else:
                 notified = True
+                state.last_notified_hash = current_hash
             state.last_changed_at = checked_at
         elif changed:
             state.last_changed_at = checked_at
 
-        state.last_hash = current_hash
-        state.last_important_text = important_text
+        if should_persist_payload:
+            state.last_hash = current_hash
+            state.last_important_text = important_text
         state.last_checked_at = checked_at
         state.consecutive_error_count = 0
         state.last_error = None
@@ -173,6 +180,7 @@ class WatchService:
             checked_at=checked_at,
             changed=changed,
             notified=notified,
+            content_hash=current_hash,
             sale_period_status=sale_period_status,
             error=notification_error,
             recovered=recovered,
