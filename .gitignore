@@ -4,3 +4,4 @@ node_modules/
 .DS_Store
 AGENTS.md
 /local
+data/watch_states.sqlite3
